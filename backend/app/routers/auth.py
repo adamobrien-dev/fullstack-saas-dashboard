@@ -51,6 +51,7 @@ def login(payload: UserLogin, response: Response, db: Session = Depends(get_db))
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
+        path="/",
         max_age=30 * 60  # 30 minutes
     )
     response.set_cookie(
@@ -59,6 +60,7 @@ def login(payload: UserLogin, response: Response, db: Session = Depends(get_db))
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
+        path="/",
         max_age=7 * 24 * 60 * 60  # 7 days
     )
     
@@ -96,6 +98,7 @@ def refresh_token_endpoint(response: Response, refresh_token_cookie: str = Cooki
         httponly=True,
         secure=False,
         samesite="lax",
+        path="/",
         max_age=30 * 60
     )
     
