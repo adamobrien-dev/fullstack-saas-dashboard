@@ -12,7 +12,7 @@ from backend.app.deps.auth import get_current_user, get_db
 router = APIRouter()
 
 @router.post("/register", response_model=UserOut, status_code=201)
-def register(payload: UserCreate, db: Session = Depends(get_db)):
+def register(payload: UserCreate, response: Response, db: Session = Depends(get_db)):
     existing = db.execute(select(User).where(User.email == payload.email)).scalars().first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -26,6 +26,31 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
         db.add(u)
         db.commit()
         db.refresh(u)
+        
+        # Automatically sign in after registration
+        access_token = create_access_token(data={"sub": str(u.id)})
+        refresh_token = create_refresh_token(data={"sub": str(u.id)})
+        
+        # Set HttpOnly cookies
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="lax",
+            path="/",
+            max_age=30 * 60  # 30 minutes
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="lax",
+            path="/",
+            max_age=7 * 24 * 60 * 60  # 7 days
+        )
+        
         return u
     except IntegrityError:
         db.rollback()
