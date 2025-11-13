@@ -38,3 +38,46 @@ export const authApi = {
   },
 };
 
+// Organization API calls
+export const orgApi = {
+  create: async (name: string) => {
+    const response = await api.post('/orgs', { name });
+    return response.data;
+  },
+
+  listMine: async () => {
+    const response = await api.get('/orgs/mine');
+    return response.data;
+  },
+
+  invite: async (orgId: number, email: string, role: string) => {
+    const response = await api.post(`/orgs/${orgId}/invite`, { email, role });
+    return response.data;
+  },
+
+  listPendingInvitations: async () => {
+    const response = await api.get('/orgs/invitations/pending');
+    return response.data;
+  },
+
+  acceptInvite: async (token: string) => {
+    const response = await api.post('/orgs/accept', { token });
+    return response.data;
+  },
+
+  listMembers: async (orgId: number) => {
+    const response = await api.get(`/orgs/${orgId}/members`);
+    return response.data;
+  },
+
+  updateMemberRole: async (orgId: number, userId: number, role: string) => {
+    const response = await api.patch(`/orgs/${orgId}/members/${userId}`, { role });
+    return response.data;
+  },
+
+  removeMember: async (orgId: number, userId: number) => {
+    const response = await api.delete(`/orgs/${orgId}/members/${userId}`);
+    return response.data;
+  },
+};
+

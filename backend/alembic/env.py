@@ -12,7 +12,7 @@ if BASE_DIR not in sys.path:
 
 from backend.app.core.config import settings
 from backend.app.db.base import Base
-from backend.app.models import user  # import models so Alembic sees them
+from backend.app.models import user, organization  # import models so Alembic sees them
 
 
 config = context.config
