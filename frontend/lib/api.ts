@@ -81,3 +81,11 @@ export const orgApi = {
   },
 };
 
+// Analytics API calls
+export const analyticsApi = {
+  getDashboard: async () => {
+    const response = await api.get('/analytics/dashboard');
+    return response.data;
+  },
+};
+

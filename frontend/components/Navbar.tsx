@@ -110,6 +110,12 @@ export default function Navbar() {
             ) : user ? (
               <>
                 <a
+                  href="/analytics"
+                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Analytics
+                </a>
+                <a
                   href="/invitations"
                   className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium relative"
                 >
