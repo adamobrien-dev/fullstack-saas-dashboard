@@ -92,6 +92,28 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Analytics Card */}
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                    Analytics Dashboard
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    View comprehensive metrics, charts, and insights about your platform usage.
+                  </p>
+                </div>
+                <a
+                  href="/analytics"
+                  className="ml-4 bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors"
+                >
+                  View Analytics
+                </a>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">

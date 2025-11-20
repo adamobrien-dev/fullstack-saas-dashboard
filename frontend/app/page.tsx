@@ -1,6 +1,25 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { authApi } from '@/lib/api';
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is logged in, redirect to dashboard if so
+    authApi
+      .getCurrentUser()
+      .then(() => {
+        router.push('/dashboard');
+      })
+      .catch(() => {
+        // Not logged in, stay on landing page
+      });
+  }, [router]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
