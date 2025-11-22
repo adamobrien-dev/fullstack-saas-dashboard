@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.routers import auth, organization, analytics
+from backend.app.routers import auth, organization, analytics, test_email
 
 app = FastAPI(title="Full-Stack SaaS Dashboard", version="0.1.0")
 
@@ -23,3 +23,4 @@ def health():
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(organization.router, tags=["organizations"])
 app.include_router(analytics.router, tags=["analytics"])
+app.include_router(test_email.router, prefix="/test", tags=["testing"])
