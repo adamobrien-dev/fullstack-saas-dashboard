@@ -16,3 +16,10 @@ class UserOut(BaseModel):
     role: str
     class Config:
         from_attributes = True
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordReset(BaseModel):
+    token: str
+    new_password: str

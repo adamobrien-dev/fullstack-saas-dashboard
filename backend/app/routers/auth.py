@@ -3,12 +3,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from pydantic import EmailStr
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timedelta, timezone
+import uuid
 from backend.app.models.user import User
-from backend.app.schema.user import UserCreate, UserLogin, UserOut
+from backend.app.schema.user import UserCreate, UserLogin, UserOut, PasswordResetRequest, PasswordReset
 from backend.app.utils.password import hash_password, verify_password
 from backend.app.utils.jwt import create_access_token, create_refresh_token, verify_token
 from backend.app.deps.auth import get_current_user, get_db
-from backend.app.utils.email import send_welcome_email
+from backend.app.utils.email import send_welcome_email, send_password_reset_email
 
 router = APIRouter()
 
@@ -151,3 +153,85 @@ def logout(response: Response):
     response.delete_cookie(key="access_token", path="/", samesite="lax")
     response.delete_cookie(key="refresh_token", path="/", samesite="lax")
     return {"message": "Logged out successfully"}
+
+
+@router.post("/password-reset-request")
+def request_password_reset(
+    payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    Request a password reset. Sends an email with a reset link.
+    Always returns success to prevent email enumeration attacks.
+    """
+    user = db.execute(select(User).where(User.email == payload.email)).scalars().first()
+    
+    # Always return success message (even if user doesn't exist)
+    # This prevents email enumeration attacks
+    if not user:
+        return {"message": "If that email exists, a password reset link has been sent"}
+    
+    # Generate reset token
+    reset_token = str(uuid.uuid4())
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # Token valid for 1 hour
+    
+    # Store token and expiry in user record
+    user.password_reset_token = reset_token
+    user.password_reset_expires_at = expires_at
+    db.commit()
+    
+    # Send password reset email in background
+    try:
+        send_password_reset_email(
+            email=user.email,
+            user_name=user.name,
+            reset_token=reset_token,
+            background_tasks=background_tasks
+        )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"[WARNING] Failed to send password reset email: {str(e)}")
+    
+    return {"message": "If that email exists, a password reset link has been sent"}
+
+
+@router.post("/password-reset")
+def reset_password(
+    payload: PasswordReset,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password using the token from the email.
+    """
+    # Find user by reset token
+    user = db.execute(
+        select(User).where(
+            User.password_reset_token == payload.token
+        )
+    ).scalars().first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired reset token"
+        )
+    
+    # Check if token has expired
+    if user.password_reset_expires_at and user.password_reset_expires_at < datetime.now(timezone.utc):
+        # Clear expired token
+        user.password_reset_token = None
+        user.password_reset_expires_at = None
+        db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail="Reset token has expired. Please request a new one."
+        )
+    
+    # Update password
+    user.password_hash = hash_password(payload.new_password)
+    user.password_reset_token = None
+    user.password_reset_expires_at = None
+    db.commit()
+    
+    return {"message": "Password reset successfully. You can now log in with your new password."}

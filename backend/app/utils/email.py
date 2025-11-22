@@ -178,3 +178,35 @@ def send_welcome_email(
     
     # Schedule email to be sent in background
     send_email_background(background_tasks, [email], subject, body)
+
+
+def send_password_reset_email(
+    email: str,
+    user_name: str,
+    reset_token: str,
+    background_tasks: BackgroundTasks
+):
+    """
+    Send a password reset email.
+    
+    Args:
+        email: User email address
+        user_name: User's name
+        reset_token: Password reset token
+        background_tasks: Background tasks for async sending
+    """
+    from datetime import datetime
+    
+    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+    
+    context = {
+        "user_name": user_name,
+        "reset_url": reset_url,
+        "current_year": datetime.now().year,
+    }
+    
+    subject = "Reset Your Password - SaaS Dashboard"
+    body = render_email_template("password_reset.html", context)
+    
+    # Schedule email to be sent in background
+    send_email_background(background_tasks, [email], subject, body)
