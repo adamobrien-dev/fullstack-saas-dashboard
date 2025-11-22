@@ -1,15 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('reset') === 'success') {
+      setSuccess('Password reset successful! Please login with your new password.');
+      // Clear the query parameter from URL
+      router.replace('/login');
+    }
+  }, [searchParams, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +45,11 @@ export default function LoginPage() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+              {success}
+            </div>
+          )}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
@@ -85,13 +100,23 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-center">
-            <a
-              href="/register"
-              className="text-sm text-indigo-600 hover:text-indigo-500"
-            >
-              Don't have an account? Register
-            </a>
+          <div className="text-center space-y-2">
+            <div>
+              <a
+                href="/forgot-password"
+                className="text-sm text-indigo-600 hover:text-indigo-500"
+              >
+                Forgot your password?
+              </a>
+            </div>
+            <div>
+              <a
+                href="/register"
+                className="text-sm text-indigo-600 hover:text-indigo-500"
+              >
+                Don't have an account? Register
+              </a>
+            </div>
           </div>
         </form>
       </div>

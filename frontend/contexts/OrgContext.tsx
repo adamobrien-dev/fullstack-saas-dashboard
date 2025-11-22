@@ -32,10 +32,17 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       } else {
         setCurrentOrgState(null);
       }
-    } catch (error) {
-      console.error('Failed to load organizations:', error);
-      setOrganizations([]);
-      setCurrentOrgState(null);
+    } catch (error: any) {
+      // Silently handle 401 (unauthorized) - user is not logged in
+      if (error.response?.status === 401) {
+        setOrganizations([]);
+        setCurrentOrgState(null);
+      } else {
+        // Only log non-401 errors
+        console.error('Failed to load organizations:', error);
+        setOrganizations([]);
+        setCurrentOrgState(null);
+      }
     } finally {
       setLoading(false);
     }
