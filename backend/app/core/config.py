@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     # Email Settings (Resend API)
     RESEND_API_KEY: Optional[str] = None
-    MAIL_FROM: str = "onboarding@resend.dev"  # Default Resend domain
+    MAIL_FROM: str = "noreply@adamobrien.dev"  # Use verified domain
     MAIL_FROM_NAME: str = "SaaS Dashboard"
     
     # Frontend URL for email links

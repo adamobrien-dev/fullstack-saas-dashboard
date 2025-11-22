@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from pydantic import EmailStr
@@ -8,11 +8,17 @@ from backend.app.schema.user import UserCreate, UserLogin, UserOut
 from backend.app.utils.password import hash_password, verify_password
 from backend.app.utils.jwt import create_access_token, create_refresh_token, verify_token
 from backend.app.deps.auth import get_current_user, get_db
+from backend.app.utils.email import send_welcome_email
 
 router = APIRouter()
 
 @router.post("/register", response_model=UserOut, status_code=201)
-def register(payload: UserCreate, response: Response, db: Session = Depends(get_db)):
+def register(
+    payload: UserCreate,
+    response: Response,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     existing = db.execute(select(User).where(User.email == payload.email)).scalars().first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -50,6 +56,17 @@ def register(payload: UserCreate, response: Response, db: Session = Depends(get_
             path="/",
             max_age=7 * 24 * 60 * 60  # 7 days
         )
+        
+        # Send welcome email in background (don't fail registration if email fails)
+        try:
+            send_welcome_email(
+                email=str(payload.email),
+                user_name=payload.name,
+                background_tasks=background_tasks
+            )
+        except Exception as e:
+            # Log error but don't fail registration
+            print(f"[WARNING] Failed to send welcome email: {str(e)}")
         
         return u
     except IntegrityError:

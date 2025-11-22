@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Path
+from fastapi import APIRouter, Depends, HTTPException, status, Path, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_, or_
 from datetime import datetime, timedelta, timezone
@@ -13,6 +13,7 @@ from backend.app.schema.organization import (
     OrgCreate, OrgOut, InviteIn, InviteAccept, InviteOut,
     MemberOut, UpdateMemberRole
 )
+from backend.app.utils.email import send_invitation_email
 
 router = APIRouter()
 
@@ -65,11 +66,20 @@ def list_my_organizations(
 def create_invitation(
     org_id: int,
     payload: InviteIn,
+    background_tasks: BackgroundTasks,
     ctx: tuple = Depends(require_role({"owner", "admin"})),
     db: Session = Depends(get_db)
 ):
-    """Create an invitation. Only owner/admin can invite."""
+    """Create an invitation and send email notification. Only owner/admin can invite."""
     current_user, membership = ctx
+    
+    # Get organization
+    org = db.execute(select(Organization).where(Organization.id == org_id)).scalars().first()
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
     
     # Validate role
     if payload.role not in ["owner", "admin", "member"]:
@@ -131,6 +141,22 @@ def create_invitation(
     db.add(invitation)
     db.commit()
     db.refresh(invitation)
+    
+    # Send invitation email in background (don't fail invitation creation if email fails)
+    try:
+        send_invitation_email(
+            email=payload.email,
+            organization_name=org.name,
+            inviter_name=current_user.name,
+            role=payload.role,
+            invitation_token=token,
+            background_tasks=background_tasks
+        )
+    except Exception as e:
+        # Log error but don't fail invitation creation
+        print(f"[WARNING] Failed to send invitation email: {str(e)}")
+        # Invitation is still created and can be accepted via UI
+    
     return invitation
 
 

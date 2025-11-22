@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 from backend.app.deps.auth import get_current_user, get_db
 from backend.app.models.user import User
 from backend.app.utils.email import send_email_background, send_email
@@ -74,5 +76,31 @@ async def test_email_background(
         "message": "Test email scheduled in background",
         "recipient": current_user.email,
         "note": "Check your inbox (and spam folder). Response returned immediately."
+    }
+
+
+@router.delete("/delete-user/{email}")
+def delete_user_by_email(
+    email: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Test endpoint to delete a user by email address.
+    WARNING: Only use for testing! This permanently deletes the user.
+    """
+    user = db.execute(select(User).where(User.email == email)).scalars().first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with email {email} not found")
+    
+    user_email = user.email
+    db.delete(user)
+    db.commit()
+    
+    return {
+        "message": f"User {user_email} deleted successfully",
+        "deleted_email": user_email,
+        "note": "This is a test endpoint. Use with caution!"
     }
 

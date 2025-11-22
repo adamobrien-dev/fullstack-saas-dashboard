@@ -86,14 +86,18 @@ async def send_email(
         error_msg = str(e)
         print(f"[ERROR] Failed to send email: {error_msg}")
         
-        # Provide helpful error message for Resend limitations
+        # For Resend domain/verification issues, log warning but don't raise
+        # This allows the app to continue working even if email fails
         if "only send testing emails to your own email address" in error_msg.lower():
-            raise ValueError(
-                f"Resend limitation: {error_msg}. "
-                "Either send to your verified email address, or verify a domain at resend.com/domains"
-            ) from e
+            print(f"[WARNING] Email not sent due to Resend limitation. Verify domain at resend.com/domains")
+            print(f"[INFO] Once you verify your domain and set MAIL_FROM in .env, emails will work")
+            # Return None instead of raising - allows graceful degradation
+            return None
         
-        raise Exception(f"Error sending email: {error_msg}") from e
+        # For other errors, log but don't raise in background tasks
+        # This prevents email failures from breaking the app
+        print(f"[WARNING] Email sending failed: {error_msg}")
+        return None
 
 
 def send_email_background(
@@ -106,3 +110,71 @@ def send_email_background(
 ):
     """Schedule an email to be sent in the background."""
     background_tasks.add_task(send_email, recipients, subject, body, from_email, from_name)
+
+
+def send_invitation_email(
+    email: str,
+    organization_name: str,
+    inviter_name: str,
+    role: str,
+    invitation_token: str,
+    background_tasks: BackgroundTasks
+):
+    """
+    Send an invitation email to join an organization.
+    
+    Args:
+        email: Recipient email address
+        organization_name: Name of the organization
+        inviter_name: Name of the person sending the invitation
+        role: Role being invited (owner, admin, member)
+        invitation_token: Unique token for accepting the invitation
+        background_tasks: Background tasks for async sending
+    """
+    from datetime import datetime
+    
+    invitation_url = f"{settings.FRONTEND_URL}/invitations?token={invitation_token}"
+    
+    context = {
+        "organization_name": organization_name,
+        "inviter_name": inviter_name,
+        "role": role.capitalize(),
+        "invitation_url": invitation_url,
+        "current_year": datetime.now().year,
+    }
+    
+    subject = f"You've been invited to join {organization_name}"
+    body = render_email_template("invitation.html", context)
+    
+    # Schedule email to be sent in background
+    send_email_background(background_tasks, [email], subject, body)
+
+
+def send_welcome_email(
+    email: str,
+    user_name: str,
+    background_tasks: BackgroundTasks
+):
+    """
+    Send a welcome email to a new user.
+    
+    Args:
+        email: User email address
+        user_name: User's name
+        background_tasks: Background tasks for async sending
+    """
+    from datetime import datetime
+    
+    dashboard_url = f"{settings.FRONTEND_URL}/dashboard"
+    
+    context = {
+        "user_name": user_name,
+        "dashboard_url": dashboard_url,
+        "current_year": datetime.now().year,
+    }
+    
+    subject = "Welcome to SaaS Dashboard!"
+    body = render_email_template("welcome.html", context)
+    
+    # Schedule email to be sent in background
+    send_email_background(background_tasks, [email], subject, body)
