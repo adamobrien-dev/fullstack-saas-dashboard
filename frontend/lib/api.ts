@@ -50,6 +50,25 @@ export const authApi = {
     });
     return response.data;
   },
+
+  updateProfile: async (name?: string, email?: string) => {
+    const payload: any = {};
+    if (name !== undefined) payload.name = name;
+    if (email !== undefined) payload.email = email;
+    const response = await api.patch('/auth/profile', payload);
+    return response.data;
+  },
+
+  uploadAvatar: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/auth/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
 
 // Organization API calls
