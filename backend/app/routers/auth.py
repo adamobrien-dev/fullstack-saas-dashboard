@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta, timezone
 import uuid
 from backend.app.models.user import User
-from backend.app.schema.user import UserCreate, UserLogin, UserOut, PasswordResetRequest, PasswordReset
+from backend.app.schema.user import UserCreate, UserLogin, UserOut, PasswordResetRequest, PasswordReset, ProfileUpdate
 from backend.app.utils.password import hash_password, verify_password
 from backend.app.utils.jwt import create_access_token, create_refresh_token, verify_token
 from backend.app.deps.auth import get_current_user, get_db
@@ -114,6 +114,49 @@ def login(payload: UserLogin, response: Response, db: Session = Depends(get_db))
 def get_current_user_info(current_user: User = Depends(get_current_user)):
     return current_user
 
+@router.patch("/profile", response_model=UserOut)
+def update_profile(
+    payload: ProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update user profile (name and/or email).
+    Requires authentication.
+    """
+    # Check if email is being updated and if it's already taken
+    if payload.email and payload.email != current_user.email:
+        existing_user = db.execute(
+            select(User).where(User.email == payload.email)
+        ).scalars().first()
+        if existing_user:
+            raise HTTPException(
+                status_code=400,
+                detail="Email already registered"
+            )
+        current_user.email = payload.email
+    
+    # Update name if provided
+    if payload.name is not None:
+        current_user.name = payload.name
+    
+    try:
+        db.commit()
+        db.refresh(current_user)
+        return current_user
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update profile: {str(e)}"
+        )
+
 @router.post("/refresh")
 def refresh_token_endpoint(response: Response, refresh_token_cookie: str = Cookie(None, alias="refresh_token")):
     if not refresh_token_cookie:
@@ -165,12 +208,18 @@ def request_password_reset(
     Request a password reset. Sends an email with a reset link.
     Always returns success to prevent email enumeration attacks.
     """
-    user = db.execute(select(User).where(User.email == payload.email)).scalars().first()
+    requested_email = payload.email
+    print(f"[PASSWORD RESET] Request received for email: {requested_email}")
+    
+    user = db.execute(select(User).where(User.email == requested_email)).scalars().first()
     
     # Always return success message (even if user doesn't exist)
     # This prevents email enumeration attacks
     if not user:
+        print(f"[PASSWORD RESET] No user found for email: {requested_email}")
         return {"message": "If that email exists, a password reset link has been sent"}
+    
+    print(f"[PASSWORD RESET] User found: {user.email} (ID: {user.id})")
     
     # Generate reset token
     reset_token = str(uuid.uuid4())
@@ -181,6 +230,8 @@ def request_password_reset(
     user.password_reset_expires_at = expires_at
     db.commit()
     
+    print(f"[PASSWORD RESET] Sending email to: {user.email} (requested: {requested_email})")
+    
     # Send password reset email in background
     try:
         send_password_reset_email(
@@ -189,6 +240,7 @@ def request_password_reset(
             reset_token=reset_token,
             background_tasks=background_tasks
         )
+        print(f"[PASSWORD RESET] Email scheduled for: {user.email}")
     except Exception as e:
         # Log error but don't fail the request
         print(f"[WARNING] Failed to send password reset email: {str(e)}")
