@@ -134,6 +134,12 @@ export default function Navbar() {
                     Members
                   </a>
                 )}
+                <a
+                  href="/profile"
+                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Profile
+                </a>
                 <span className="text-gray-700">Welcome, {user.name}</span>
                 <button
                   onClick={handleLogout}
