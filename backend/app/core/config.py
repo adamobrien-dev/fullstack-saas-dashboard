@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     
     # Frontend URL for email links
     FRONTEND_URL: str = "http://localhost:3000"
+    
+    # File upload settings
+    UPLOAD_DIR: str = "uploads"
+    AVATAR_DIR: str = "uploads/avatars"
+    MAX_AVATAR_SIZE: int = 5 * 1024 * 1024  # 5MB
+    ALLOWED_IMAGE_TYPES: list = ["image/jpeg", "image/png", "image/gif", "image/webp"]
 
     class Config:
         env_file = ".env"

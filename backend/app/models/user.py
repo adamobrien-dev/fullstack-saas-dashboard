@@ -13,3 +13,6 @@ class User(Base):
     # Password reset fields
     password_reset_token = Column(String(255), nullable=True, index=True)
     password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Avatar field
+    avatar_url = Column(String(500), nullable=True)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, BackgroundTasks, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from pydantic import EmailStr
@@ -11,6 +11,10 @@ from backend.app.utils.password import hash_password, verify_password
 from backend.app.utils.jwt import create_access_token, create_refresh_token, verify_token
 from backend.app.deps.auth import get_current_user, get_db
 from backend.app.utils.email import send_welcome_email, send_password_reset_email
+from backend.app.core.config import settings
+import os
+import shutil
+from pathlib import Path
 
 router = APIRouter()
 
@@ -196,6 +200,79 @@ def logout(response: Response):
     response.delete_cookie(key="access_token", path="/", samesite="lax")
     response.delete_cookie(key="refresh_token", path="/", samesite="lax")
     return {"message": "Logged out successfully"}
+
+
+@router.post("/avatar", response_model=UserOut)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload user avatar image.
+    Requires authentication.
+    Accepts: JPEG, PNG, GIF, WebP
+    Max size: 5MB
+    """
+    # Validate file type
+    if file.content_type not in settings.ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed types: {', '.join(settings.ALLOWED_IMAGE_TYPES)}"
+        )
+    
+    # Read file content to check size
+    contents = await file.read()
+    file_size = len(contents)
+    
+    # Validate file size
+    if file_size > settings.MAX_AVATAR_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size: {settings.MAX_AVATAR_SIZE / (1024 * 1024):.1f}MB"
+        )
+    
+    # Create upload directory if it doesn't exist
+    upload_dir = Path(settings.AVATAR_DIR)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate unique filename
+    file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+    unique_filename = f"{current_user.id}_{uuid.uuid4().hex}.{file_extension}"
+    file_path = upload_dir / unique_filename
+    
+    # Delete old avatar if exists
+    if current_user.avatar_url:
+        # Extract filename from URL (format: /uploads/avatars/filename.jpg)
+        old_filename = current_user.avatar_url.split('/')[-1]
+        old_avatar_path = upload_dir / old_filename
+        if old_avatar_path.exists():
+            try:
+                old_avatar_path.unlink()
+            except Exception as e:
+                print(f"[WARNING] Failed to delete old avatar: {str(e)}")
+    
+    # Save new file
+    try:
+        with open(file_path, "wb") as buffer:
+            buffer.write(contents)
+        
+        # Update user avatar URL (relative path for serving via /uploads)
+        avatar_url = f"/uploads/avatars/{unique_filename}"
+        current_user.avatar_url = avatar_url
+        db.commit()
+        db.refresh(current_user)
+        
+        return current_user
+    except Exception as e:
+        db.rollback()
+        # Clean up file if database update failed
+        if file_path.exists():
+            file_path.unlink()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload avatar: {str(e)}"
+        )
 
 
 @router.post("/password-reset-request")

@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from backend.app.routers import auth, organization, analytics, test_email
+from backend.app.core.config import settings
+import os
 
 app = FastAPI(title="Full-Stack SaaS Dashboard", version="0.1.0")
 
@@ -24,3 +27,7 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(organization.router, tags=["organizations"])
 app.include_router(analytics.router, tags=["analytics"])
 app.include_router(test_email.router, prefix="/test", tags=["testing"])
+
+# Serve static files for uploads (avatars, etc.)
+if os.path.exists(settings.UPLOAD_DIR):
+    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
