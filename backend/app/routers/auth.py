@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta, timezone
 import uuid
 from backend.app.models.user import User
-from backend.app.schema.user import UserCreate, UserLogin, UserOut, PasswordResetRequest, PasswordReset, ProfileUpdate
+from backend.app.schema.user import UserCreate, UserLogin, UserOut, PasswordResetRequest, PasswordReset, ProfileUpdate, ChangePassword
 from backend.app.utils.password import hash_password, verify_password
 from backend.app.utils.jwt import create_access_token, create_refresh_token, verify_token
 from backend.app.deps.auth import get_current_user, get_db
@@ -272,6 +272,49 @@ async def upload_avatar(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to upload avatar: {str(e)}"
+        )
+
+@router.post("/change-password")
+def change_password(
+    payload: ChangePassword,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Change user password. Requires authentication and current password.
+    Different from password reset - this is for authenticated users.
+    """
+    # Verify current password
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="Current password is incorrect"
+        )
+    
+    # Validate new password is different from current
+    if verify_password(payload.new_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different from current password"
+        )
+    
+    # Validate new password length
+    if len(payload.new_password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be at least 8 characters long"
+        )
+    
+    # Update password
+    try:
+        current_user.password_hash = hash_password(payload.new_password)
+        db.commit()
+        return {"message": "Password changed successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to change password: {str(e)}"
         )
 
 

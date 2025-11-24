@@ -29,3 +29,7 @@ class PasswordReset(BaseModel):
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
