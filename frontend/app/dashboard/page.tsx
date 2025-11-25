@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { authApi, orgApi } from '@/lib/api';
 import { User } from '@/types/user';
 import { useOrg } from '@/contexts/OrgContext';
+import ActivityFeed from '@/components/ActivityFeed';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -113,6 +114,9 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Activity Feed */}
+          <ActivityFeed limit={10} />
 
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
