@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, BackgroundTasks, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, BackgroundTasks, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from pydantic import EmailStr
@@ -11,6 +11,7 @@ from backend.app.utils.password import hash_password, verify_password
 from backend.app.utils.jwt import create_access_token, create_refresh_token, verify_token
 from backend.app.deps.auth import get_current_user, get_db
 from backend.app.utils.email import send_welcome_email, send_password_reset_email
+from backend.app.utils.activity import log_activity_from_request, ActivityAction, ResourceType
 from backend.app.core.config import settings
 import os
 import shutil
@@ -21,6 +22,7 @@ router = APIRouter()
 @router.post("/register", response_model=UserOut, status_code=201)
 def register(
     payload: UserCreate,
+    request: Request,
     response: Response,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
@@ -63,6 +65,17 @@ def register(
             max_age=7 * 24 * 60 * 60  # 7 days
         )
         
+        # Log activity
+        log_activity_from_request(
+            db=db,
+            request=request,
+            action=ActivityAction.USER_REGISTER,
+            user_id=u.id,
+            resource_type=ResourceType.USER,
+            resource_id=u.id,
+            details={"email": u.email, "name": u.name}
+        )
+        
         # Send welcome email in background (don't fail registration if email fails)
         try:
             send_welcome_email(
@@ -83,7 +96,7 @@ def register(
         raise HTTPException(status_code=500, detail=f"Registration failed: {e}")
 
 @router.post("/login")
-def login(payload: UserLogin, response: Response, db: Session = Depends(get_db)):
+def login(payload: UserLogin, request: Request, response: Response, db: Session = Depends(get_db)):
     u = db.execute(select(User).where(User.email == payload.email)).scalars().first()
     if not u or not verify_password(payload.password, u.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -110,6 +123,17 @@ def login(payload: UserLogin, response: Response, db: Session = Depends(get_db))
         samesite="lax",
         path="/",
         max_age=7 * 24 * 60 * 60  # 7 days
+    )
+    
+    # Log activity
+    log_activity_from_request(
+        db=db,
+        request=request,
+        action=ActivityAction.USER_LOGIN,
+        user_id=u.id,
+        resource_type=ResourceType.USER,
+        resource_id=u.id,
+        details={"email": u.email, "success": True}
     )
     
     return {"message": "Login successful", "user": UserOut.model_validate(u)}

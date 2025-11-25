@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Path, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Path, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_, or_
 from datetime import datetime, timedelta, timezone
@@ -14,6 +14,7 @@ from backend.app.schema.organization import (
     MemberOut, UpdateMemberRole
 )
 from backend.app.utils.email import send_invitation_email
+from backend.app.utils.activity import log_activity_from_request, ActivityAction, ResourceType
 
 router = APIRouter()
 
@@ -21,6 +22,7 @@ router = APIRouter()
 @router.post("/orgs", response_model=OrgOut, status_code=201)
 def create_organization(
     payload: OrgCreate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -38,6 +40,19 @@ def create_organization(
     db.add(membership)
     db.commit()
     db.refresh(org)
+    
+    # Log activity
+    log_activity_from_request(
+        db=db,
+        request=request,
+        action=ActivityAction.ORG_CREATE,
+        user_id=current_user.id,
+        resource_type=ResourceType.ORGANIZATION,
+        resource_id=org.id,
+        organization_id=org.id,
+        details={"name": org.name}
+    )
+    
     return org
 
 
@@ -66,6 +81,7 @@ def list_my_organizations(
 def create_invitation(
     org_id: int,
     payload: InviteIn,
+    request: Request,
     background_tasks: BackgroundTasks,
     ctx: tuple = Depends(require_role({"owner", "admin"})),
     db: Session = Depends(get_db)
@@ -142,6 +158,18 @@ def create_invitation(
     db.commit()
     db.refresh(invitation)
     
+    # Log activity
+    log_activity_from_request(
+        db=db,
+        request=request,
+        action=ActivityAction.INVITATION_CREATE,
+        user_id=current_user.id,
+        resource_type=ResourceType.INVITATION,
+        resource_id=invitation.id,
+        organization_id=org_id,
+        details={"email": payload.email, "role": payload.role}
+    )
+    
     # Send invitation email in background (don't fail invitation creation if email fails)
     try:
         send_invitation_email(
@@ -186,6 +214,7 @@ def list_pending_invitations(
 @router.post("/orgs/accept", response_model=MemberOut, status_code=201)
 def accept_invitation(
     payload: InviteAccept,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -249,6 +278,30 @@ def accept_invitation(
     
     db.commit()
     db.refresh(membership)
+    
+    # Log activity
+    log_activity_from_request(
+        db=db,
+        request=request,
+        action=ActivityAction.INVITATION_ACCEPT,
+        user_id=current_user.id,
+        resource_type=ResourceType.MEMBERSHIP,
+        resource_id=membership.id,
+        organization_id=invitation.org_id,
+        details={"role": invitation.role, "invitation_email": invitation.email}
+    )
+    
+    # Also log membership creation
+    log_activity_from_request(
+        db=db,
+        request=request,
+        action=ActivityAction.MEMBERSHIP_CREATE,
+        user_id=current_user.id,
+        resource_type=ResourceType.MEMBERSHIP,
+        resource_id=membership.id,
+        organization_id=invitation.org_id,
+        details={"role": invitation.role}
+    )
     
     # Return member with user info (we already have current_user)
     return MemberOut(
