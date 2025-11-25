@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from backend.app.routers import auth, organization, analytics, test_email
+from backend.app.routers import auth, organization, analytics, test_email, activity
 from backend.app.core.config import settings
 import os
 
@@ -26,6 +26,7 @@ def health():
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(organization.router, tags=["organizations"])
 app.include_router(analytics.router, tags=["analytics"])
+app.include_router(activity.router, tags=["activity"])
 app.include_router(test_email.router, prefix="/test", tags=["testing"])
 
 # Serve static files for uploads (avatars, etc.)
