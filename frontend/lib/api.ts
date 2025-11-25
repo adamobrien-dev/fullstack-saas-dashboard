@@ -130,3 +130,76 @@ export const analyticsApi = {
   },
 };
 
+// Activity Log API calls
+export const activityApi = {
+  /**
+   * Get activity logs with filtering and pagination.
+   * Users can only see their own logs or logs from organizations they belong to.
+   */
+  getLogs: async (filters?: {
+    page?: number;
+    page_size?: number;
+    user_id?: number;
+    action?: string;
+    resource_type?: string;
+    organization_id?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      if (filters.page !== undefined) params.append('page', filters.page.toString());
+      if (filters.page_size !== undefined) params.append('page_size', filters.page_size.toString());
+      if (filters.user_id !== undefined) params.append('user_id', filters.user_id.toString());
+      if (filters.action) params.append('action', filters.action);
+      if (filters.resource_type) params.append('resource_type', filters.resource_type);
+      if (filters.organization_id !== undefined) params.append('organization_id', filters.organization_id.toString());
+    }
+    const response = await api.get(`/activity/logs?${params.toString()}`);
+    return response.data;
+  },
+
+  /**
+   * Get activity logs for the current user only.
+   */
+  getMyLogs: async (page?: number, page_size?: number, action?: string) => {
+    const params = new URLSearchParams();
+    if (page !== undefined) params.append('page', page.toString());
+    if (page_size !== undefined) params.append('page_size', page_size.toString());
+    if (action) params.append('action', action);
+    const response = await api.get(`/activity/logs/me?${params.toString()}`);
+    return response.data;
+  },
+
+  /**
+   * Get activity logs for a specific organization.
+   * Requires membership in the organization.
+   */
+  getOrgLogs: async (
+    orgId: number,
+    filters?: {
+      page?: number;
+      page_size?: number;
+      user_id?: number;
+      action?: string;
+    }
+  ) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      if (filters.page !== undefined) params.append('page', filters.page.toString());
+      if (filters.page_size !== undefined) params.append('page_size', filters.page_size.toString());
+      if (filters.user_id !== undefined) params.append('user_id', filters.user_id.toString());
+      if (filters.action) params.append('action', filters.action);
+    }
+    const response = await api.get(`/activity/logs/org/${orgId}?${params.toString()}`);
+    return response.data;
+  },
+
+  /**
+   * Get a specific activity log by ID.
+   * User must have access to it (own log or member of organization).
+   */
+  getLog: async (logId: number) => {
+    const response = await api.get(`/activity/logs/${logId}`);
+    return response.data;
+  },
+};
+
