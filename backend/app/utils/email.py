@@ -28,7 +28,7 @@ def render_email_template(template_name: str, context: dict) -> str:
         return f"Template error: {str(e)}"
 
 
-async def send_email(
+def send_email(
     recipients: List[str],
     subject: str,
     body: str,
@@ -77,9 +77,9 @@ async def send_email(
         data = Emails.send(params)
         
         if data and hasattr(data, 'get') and data.get('id'):
-            print(f"[SUCCESS] Email sent successfully! ID: {data.get('id')}")
+            print(f"[SUCCESS] Email sent successfully to {recipients}. ID: {data.get('id')}")
         else:
-            print(f"[WARNING] Email API call returned: {data}")
+            print(f"[WARNING] Email API call returned unexpected response: {data}")
         
         return data
     except Exception as e:
