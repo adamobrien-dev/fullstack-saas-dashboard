@@ -4,7 +4,8 @@ Analytics API endpoints for dashboard statistics and metrics.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_, or_, case
-from sqlalchemy.sql import cast, Date
+from sqlalchemy import Date
+from sqlalchemy.sql import cast
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
