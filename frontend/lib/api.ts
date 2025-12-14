@@ -128,6 +128,31 @@ export const analyticsApi = {
     const response = await api.get('/analytics/dashboard');
     return response.data;
   },
+
+  getUserStats: async () => {
+    const response = await api.get('/analytics/users/stats');
+    return response.data;
+  },
+
+  getUserGrowth: async (days: number = 30) => {
+    const response = await api.get(`/analytics/users/growth?days=${days}`);
+    return response.data;
+  },
+
+  getActivityStats: async () => {
+    const response = await api.get('/analytics/activities/stats');
+    return response.data;
+  },
+
+  getActivityTimeline: async (days: number = 30, period: 'day' | 'week' | 'month' = 'day') => {
+    const response = await api.get(`/analytics/activities/timeline?days=${days}&period=${period}`);
+    return response.data;
+  },
+
+  getOrganizationStats: async () => {
+    const response = await api.get('/analytics/organizations/stats');
+    return response.data;
+  },
 };
 
 // Activity Log API calls

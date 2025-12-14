@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi, orgApi } from '@/lib/api';
+import { authApi, orgApi, analyticsApi } from '@/lib/api';
 import { User } from '@/types/user';
 import { useOrg } from '@/contexts/OrgContext';
 import ActivityFeed from '@/components/ActivityFeed';
+import { DashboardStats } from '@/types/analytics';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function DashboardPage() {
   const [orgName, setOrgName] = useState('');
   const [creatingOrg, setCreatingOrg] = useState(false);
   const [orgError, setOrgError] = useState('');
+  const [summaryStats, setSummaryStats] = useState<DashboardStats | null>(null);
   const { organizations, refreshOrgs } = useOrg();
 
   useEffect(() => {
@@ -21,6 +23,12 @@ export default function DashboardPage() {
       .getCurrentUser()
       .then((data) => {
         setUser(data);
+        // Load summary stats
+        analyticsApi.getDashboard()
+          .then((stats) => setSummaryStats(stats))
+          .catch(() => {
+            // Silently fail - analytics is optional
+          });
       })
       .catch(() => {
         router.push('/login');
@@ -92,6 +100,72 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Summary Stats */}
+          {summaryStats && (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0"></div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {summaryStats.user_stats.total_users}
+                        </dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0"></div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">Total Activities</dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {summaryStats.activity_stats.total_activities}
+                        </dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0"></div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">Organizations</dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {summaryStats.organization_stats.total_organizations}
+                        </dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0"></div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">Active Today</dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {summaryStats.user_stats.active_users_today}
+                        </dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Analytics Card */}
           <div className="bg-white overflow-hidden shadow rounded-lg">

@@ -1,49 +1,64 @@
+"""
+Pydantic schemas for analytics and statistics data.
+"""
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
 class TimeSeriesDataPoint(BaseModel):
-    date: str  # ISO format date string
-    value: int
+    """Single data point in a time series."""
+    date: str
+    count: int
+    value: Optional[float] = None
 
 
-class UserGrowthMetrics(BaseModel):
+class UserStats(BaseModel):
+    """User statistics."""
     total_users: int
-    growth_over_time: List[TimeSeriesDataPoint]
+    new_users_today: int
+    new_users_this_week: int
+    new_users_this_month: int
+    active_users_today: int
+    active_users_this_week: int
+    active_users_this_month: int
+
+
+class ActivityStats(BaseModel):
+    """Activity statistics."""
+    total_activities: int
+    activities_today: int
+    activities_this_week: int
+    activities_this_month: int
+    activities_by_action: Dict[str, int]
+    activities_by_resource_type: Dict[str, int]
 
 
 class OrganizationStats(BaseModel):
+    """Organization statistics."""
     total_organizations: int
-    avg_members_per_org: float
-    largest_org_size: int
-    org_size_distribution: List[dict]  # [{"size": 1, "count": 5}, ...]
+    total_memberships: int
+    average_members_per_org: float
+    organizations_created_today: int
+    organizations_created_this_week: int
+    organizations_created_this_month: int
 
 
-class InvitationMetrics(BaseModel):
-    total_invitations: int
-    pending: int
-    accepted: int
-    expired: int
-    acceptance_rate: float
+class ActivityTimeSeries(BaseModel):
+    """Time series data for activities."""
+    period: str  # "day", "week", "month"
+    data: List[TimeSeriesDataPoint]
 
 
-class RoleDistribution(BaseModel):
-    owners: int
-    admins: int
-    members: int
-
-
-class ActivityMetrics(BaseModel):
-    new_users_last_7_days: int
-    new_orgs_last_7_days: int
-    invitations_sent_last_7_days: int
-
-
-class DashboardAnalytics(BaseModel):
-    user_growth: UserGrowthMetrics
+class DashboardStats(BaseModel):
+    """Combined dashboard statistics."""
+    user_stats: UserStats
+    activity_stats: ActivityStats
     organization_stats: OrganizationStats
-    invitation_metrics: InvitationMetrics
-    role_distribution: RoleDistribution
-    activity_metrics: ActivityMetrics
+    activity_timeline: ActivityTimeSeries
 
+
+class UserGrowthTimeSeries(BaseModel):
+    """Time series data for user growth."""
+    period: str
+    data: List[TimeSeriesDataPoint]
